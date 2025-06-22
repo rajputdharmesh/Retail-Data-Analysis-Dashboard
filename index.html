@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retail Sales Analysis Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4e73df;
+            --secondary-color: #1cc88a;
+            --accent-color: #36b9cc;
+            --dark-color: #5a5c69;
+            --light-color: #f8f9fc;
+        }
+        
+        body {
+            font-family: 'Nunito', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-color: #f8f9fc;
+            color: #333;
+        }
+        
+        .dashboard-header {
+            background-color: white;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            padding: 1rem 0;
+            margin-bottom: 2rem;
+        }
+        
+        .dashboard-title {
+            color: var(--primary-color);
+            font-weight: 700;
+            margin: 0;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+            margin-bottom: 1.5rem;
+        }
+        
+        .card-header {
+            background-color: #f8f9fc;
+            border-bottom: 1px solid #e3e6f0;
+            padding: 1rem 1.35rem;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+        
+        .kpi-card {
+            border-left: 0.25rem solid var(--primary-color);
+        }
+        
+        .kpi-card.secondary {
+            border-left-color: var(--secondary-color);
+        }
+        
+        .kpi-card.accent {
+            border-left-color: var(--accent-color);
+        }
+        
+        .kpi-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+        
+        .kpi-label {
+            font-size: 0.875rem;
+            color: var(--dark-color);
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .chart-container {
+            height: 300px;
+            padding: 1rem;
+        }
+        
+        .footer {
+            background-color: white;
+            padding: 1.5rem 0;
+            margin-top: 2rem;
+            font-size: 0.875rem;
+            color: var(--dark-color);
+            border-top: 1px solid #e3e6f0;
+        }
+        
+        .powered-by {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        .nav-tabs .nav-link.active {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .sidebar {
+            background-color: #fff;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+            min-height: 100vh;
+        }
+        
+        .sidebar-brand {
+            height: 4.375rem;
+            text-decoration: none;
+            font-size: 1.2rem;
+            font-weight: 800;
+            padding: 1.5rem 1rem;
+            text-align: center;
+            letter-spacing: 0.05rem;
+            z-index: 1;
+            color: var(--primary-color);
+        }
+        
+        .sidebar-divider {
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            margin: 0 1rem 1rem;
+        }
+        
+        .nav-item {
+            position: relative;
+        }
+        
+        .nav-link {
+            color: #d1d3e2;
+            font-weight: 600;
+            padding: 0.75rem 1rem;
+        }
+        
+        .nav-link:hover {
+            color: #b7b9cc;
+        }
+        
+        .nav-link i {
+            margin-right: 0.25rem;
+        }
+        
+        .nav-link.active {
+            color: var(--primary-color);
+        }
+        
+        .upload-container {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+            background-color: #f9f9f9;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .upload-container:hover {
+            border-color: var(--primary-color);
+            background-color: #f0f4ff;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .file-info {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: var(--dark-color);
+        }
+        
+        .data-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 1rem;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+        
+        .data-table {
+            width: 100%;
+            font-size: 0.85rem;
+        }
+        
+        .data-table th {
+            position: sticky;
+            top: 0;
+            background-color: #f8f9fa;
+        }
+        
+        @media (min-width: 768px) {
+            .sidebar {
+                width: 14rem !important;
+            }
+            
+            .content {
+                margin-left: 14rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar position-fixed d-none d-md-block">
+            <a class="sidebar-brand d-flex align-items-center justify-content-center" href="#">
+                <i class="fas fa-store mr-2"></i>
+                <span>Retail Analytics</span>
+            </a>
+            <hr class="sidebar-divider">
+            
+            <div class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#dashboard">
+                        <i class="fas fa-fw fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#upload">
+                        <i class="fas fa-fw fa-upload"></i>
+                        <span>Upload Data</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#analysis">
+                        <i class="fas fa-fw fa-chart-line"></i>
+                        <span>Analysis</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#settings">
+                        <i class="fas fa-fw fa-cog"></i>
+                        <span>Settings</span>
+                    </a>
+                </li>
+            </div>
+        </div>
+        
+        <!-- Content -->
+        <div class="content w-100">
+            <!-- Header -->
+            <header class="dashboard-header">
+                <div class="container-fluid px-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h1 class="dashboard-title">
+                            <i class="fas fa-shopping-cart me-2"></i>Retail Sales Dashboard
+                        </h1>
+                        <div class="d-none d-md-block">
+                            <span id="current-date" class="me-3"><i class="fas fa-calendar-alt me-1"></i></span>
+                            <button class="btn btn-sm btn-primary" id="export-btn">
+                                <i class="fas fa-download me-1"></i> Export
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Main Content -->
+            <main class="container-fluid px-4">
+                <!-- Upload Section -->
+                <div class="row mb-4" id="upload-section">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="fas fa-upload me-2"></i>Upload Your Sales Data
+                            </div>
+                            <div class="card-body">
+                                <div class="upload-container" id="dropzone">
+                                    <div class="upload-icon">
+                                        <i class="fas fa-cloud-upload-alt"></i>
+                                    </div>
+                                    <h5>Drag & Drop your CSV file here</h5>
+                                    <p class="text-muted">or</p>
+                                    <button class="btn btn-primary" id="browse-btn">
+                                        <i class="fas fa-folder-open me-2"></i>Browse Files
+                                    </button>
+                                    <input type="file" id="file-input" accept=".csv" style="display: none;">
+                                    <div class="file-info" id="file-info">
+                                        No file selected
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Date Column</label>
+                                            <select class="form-select" id="date-column">
+                                                <option value="">Select date column</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label class="form-label">Revenue Column</label>
+                                            <select class="form-select" id="revenue-column">
+                                                <option value="">Select revenue column</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="data-preview" id="data-preview">
+                                    <table class="table table-sm data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Preview of your data will appear here</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>Upload a CSV file to see preview</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div class="d-flex justify-content-end mt-3">
+                                    <button class="btn btn-success" id="analyze-btn" disabled>
+                                        <i class="fas fa-chart-bar me-2"></i>Analyze Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dashboard Section -->
+                <div class="row" id="dashboard-section">
+                    <!-- KPI Cards -->
+                    <div class="col-12 mb-4">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span><i class="fas fa-tachometer-alt me-2"></i>Key Performance Indicators</span>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="toggle-sample-data">
+                                    <label class="form-check-label" for="toggle-sample-data">Use Sample Data</label>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <div class="row" id="kpi-cards">
+                                    <!-- KPI cards will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts Row 1 -->
+                    <div class="row">
+                        <div class="col-lg-8 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-line me-2"></i>Monthly Revenue Trend
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" id="monthly-revenue-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-4 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-pie me-2"></i>Revenue by Age Group
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" id="age-group-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Charts Row 2 -->
+                    <div class="row">
+                        <div class="col-lg-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-bar me-2"></i>Top Product Categories
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" id="product-categories-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6 mb-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="fas fa-chart-line me-2"></i>Revenue Forecast (Next 6 Months)
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container" id="forecast-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+            
+            <!-- Footer -->
+            <footer class="footer">
+                <div class="container-fluid">
+                    <div class="d-flex align-items-center justify-content-between small">
+                        <div class="text-muted">Copyright &copy; Retail Analytics <span id="current-year"></span></div>
+                        <div class="powered-by">
+                            <span>Powered by</span>
+                            <i class="fab fa-python text-primary"></i>
+                            <span>Plotly</span>
+                            <i class="fas fa-chart-bar text-primary"></i>
+                            <span>JavaScript</span>
+                            <i class="fab fa-js text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="navbar fixed-bottom navbar-expand navbar-light bg-white d-md-none d-flex">
+        <div class="navbar-nav w-100 d-flex justify-content-around">
+            <a class="nav-link active" href="#dashboard">
+                <i class="fas fa-tachometer-alt"></i>
+            </a>
+            <a class="nav-link" href="#upload">
+                <i class="fas fa-upload"></i>
+            </a>
+            <a class="nav-link" href="#analysis">
+                <i class="fas fa-chart-line"></i>
+            </a>
+            <a class="nav-link" href="#settings">
+                <i class="fas fa-cog"></i>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Sample Data (hidden) -->
+    <textarea id="sample-data" style="display:none;">
+Transaction ID,Date,Customer ID,Gender,Age,Product Category,Quantity,Price per Unit,Total Amount
+1,2023-01-01,CUST001,Male,25,Electronics,1,100,100
+2,2023-01-02,CUST002,Female,30,Clothing,2,200,400
+3,2023-01-03,CUST003,Male,45,Beauty,3,300,900
+4,2023-01-04,CUST004,Female,35,Home,4,400,1600
+5,2023-01-05,CUST005,Male,50,Books,5,500,2500
+6,2023-01-06,CUST006,Female,25,Electronics,1,100,100
+7,2023-01-07,CUST007,Male,30,Clothing,2,200,400
+8,2023-01-08,CUST008,Female,45,Beauty,3,300,900
+9,2023-01-09,CUST009,Male,35,Home,4,400,1600
+10,2023-01-10,CUST010,Female,50,Books,5,500,2500
+    </textarea>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+    <script>
+        // Global variables
+        let uploadedData = null;
+        let currentView = 'upload';
+        
+        // Initialize the dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set current date
+            document.getElementById('current-date').textContent = moment().format('MMMM D, YYYY');
+            document.getElementById('current-year').textContent = moment().format('YYYY');
+            
+            // Initialize event listeners
+            initEventListeners();
+            
+            // Load sample data by default
+            loadSampleData();
+        });
+        
+        function initEventListeners() {
+            // File upload handling
+            document.getElementById('browse-btn').addEventListener('click', function() {
+                document.getElementById('file-input').click();
+            });
+            
+            document.getElementById('file-input').addEventListener('change', handleFileSelect);
+            
+            // Drag and drop handling
+            const dropzone = document.getElementById('dropzone');
+            dropzone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                this.style.borderColor = 'var(--primary-color)';
+                this.style.backgroundColor = '#f0f4ff';
+            });
+            
+            dropzone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#ddd';
+                this.style.backgroundColor = '#f9f9f9';
+            });
+            
+            dropzone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                this.style.borderColor = '#ddd';
+                this.style.backgroundColor = '#f9f9f9';
+                
+                if (e.dataTransfer.files.length) {
+                    document.getElementById('file-input').files = e.dataTransfer.files;
+                    handleFileSelect({ target: document.getElementById('file-input') });
+                }
+            });
+            
+            // Analyze button
+            document.getElementById('analyze-btn').addEventListener('click', analyzeData);
+            
+            // Toggle sample data
+            document.getElementById('toggle-sample-data').addEventListener('change', function() {
+                if (this.checked) {
+                    loadSampleData();
+                } else if (uploadedData) {
+                    processData(uploadedData);
+                }
+            });
+            
+            // Navigation
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = this.getAttribute('href').substring(1);
+                    navigateTo(target);
+                });
+            });
+        }
+        
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            document.getElementById('file-info').textContent = `Selected: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`;
+            
+            Papa.parse(file, {
+                header: true,
+                complete: function(results) {
+                    uploadedData = results.data;
+                    populateColumnSelectors(results.meta.fields);
+                    showDataPreview(uploadedData.slice(0, 10));
+                    document.getElementById('analyze-btn').disabled = false;
+                    document.getElementById('toggle-sample-data').checked = false;
+                },
+                error: function(error) {
+                    alert('Error parsing CSV file: ' + error.message);
+                }
+            });
+        }
+        
+        function populateColumnSelectors(columns) {
+            const dateSelect = document.getElementById('date-column');
+            const revenueSelect = document.getElementById('revenue-column');
+            
+            // Clear existing options
+            dateSelect.innerHTML = '<option value="">Select date column</option>';
+            revenueSelect.innerHTML = '<option value="">Select revenue column</option>';
+            
+            // Add new options
+            columns.forEach(col => {
+                dateSelect.add(new Option(col, col));
+                revenueSelect.add(new Option(col, col));
+            });
+            
+            // Try to auto-detect common column names
+            const datePatterns = ['date', 'time', 'day', 'month', 'year'];
+            const revenuePatterns = ['revenue', 'amount', 'total', 'price', 'sales'];
+            
+            columns.forEach(col => {
+                const lowerCol = col.toLowerCase();
+                
+                if (datePatterns.some(pattern => lowerCol.includes(pattern))) {
+                    dateSelect.value = col;
+                }
+                
+                if (revenuePatterns.some(pattern => lowerCol.includes(pattern))) {
+                    revenueSelect.value = col;
+                }
+            });
+        }
+        
+        function showDataPreview(data) {
+            const previewDiv = document.getElementById('data-preview');
+            const table = previewDiv.querySelector('table');
+            
+            if (!data || data.length === 0) {
+                table.innerHTML = '<tr><td>No data to display</td></tr>';
+                return;
+            }
+            
+            // Create table header
+            let html = '<thead><tr>';
+            Object.keys(data[0]).forEach(key => {
+                html += `<th>${key}</th>`;
+            });
+            html += '</tr></thead><tbody>';
+            
+            // Create table rows
+            data.forEach(row => {
+                html += '<tr>';
+                Object.values(row).forEach(val => {
+                    html += `<td>${val}</td>`;
+                });
+                html += '</tr>';
+            });
+            
+            html += '</tbody>';
+            table.innerHTML = html;
+        }
+        
+        function analyzeData() {
+            const dateColumn = document.getElementById('date-column').value;
+            const revenueColumn = document.getElementById('revenue-column').value;
+            
+            if (!dateColumn || !revenueColumn) {
+                alert('Please select both date and revenue columns');
+                return;
+            }
+            
+            processData(uploadedData, dateColumn, revenueColumn);
+            navigateTo('dashboard');
+        }
+        
+        function loadSampleData() {
+            const sampleData = Papa.parse(document.getElementById('sample-data').value, {
+                header: true
+            }).data;
+            
+            uploadedData = sampleData;
+            populateColumnSelectors(Object.keys(sampleData[0]));
+            showDataPreview(sampleData.slice(0, 10));
+            document.getElementById('analyze-btn').disabled = false;
+            
+            // Auto-select columns for sample data
+            document.getElementById('date-column').value = 'Date';
+            document.getElementById('revenue-column').value = 'Total Amount';
+            
+            processData(sampleData, 'Date', 'Total Amount');
+        }
+        
+        function processData(data, dateColumn, revenueColumn) {
+            if (!data || data.length === 0) return;
+            
+            // Clean and prepare data
+            const cleanData = data.filter(row => {
+                return row[dateColumn] && row[revenueColumn] && 
+                       !isNaN(parseFloat(row[revenueColumn]));
+            }).map(row => {
+                return {
+                    date: moment(row[dateColumn]),
+                    revenue: parseFloat(row[revenueColumn]),
+                    age: row['Age'] ? parseInt(row['Age']) : null,
+                    product: row['Product Category'] || 'Unknown',
+                    gender: row['Gender'] || 'Unknown'
+                };
+            });
+            
+            // Calculate KPIs
+            const totalRevenue = cleanData.reduce((sum, row) => sum + row.revenue, 0);
+            const totalTransactions = cleanData.length;
+            const uniqueCustomers = new Set(data.map(row => row['Customer ID'] || '')).size;
+            
+            // Update KPI cards
+            document.getElementById('kpi-cards').innerHTML = `
+                <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="card kpi-card h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="kpi-label">Total Revenue</div>
+                                    <div class="kpi-value">$${totalRevenue.toLocaleString()}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="card kpi-card secondary h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="kpi-label">Transactions</div>
+                                    <div class="kpi-value">${totalTransactions.toLocaleString()}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-receipt fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-4 col-md-6 mb-4">
+                    <div class="card kpi-card accent h-100">
+                        <div class="card-body">
+                            <div class="row no-gutters align-items-center">
+                                <div class="col mr-2">
+                                    <div class="kpi-label">Unique Customers</div>
+                                    <div class="kpi-value">${uniqueCustomers.toLocaleString()}</div>
+                                </div>
+                                <div class="col-auto">
+                                    <i class="fas fa-user fa-2x text-gray-300"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Prepare data for charts
+            const monthlyData = prepareMonthlyData(cleanData);
+            const ageGroupData = prepareAgeGroupData(cleanData);
+            const productData = prepareProductData(cleanData);
+            
+            // Render charts
+            renderMonthlyRevenueChart(monthlyData);
+            renderAgeGroupChart(ageGroupData);
+            renderProductCategoriesChart(productData);
+            renderForecastChart(monthlyData);
+        }
+        
+        function prepareMonthlyData(data) {
+            const monthly = {};
+            
+            data.forEach(row => {
+                const monthYear = row.date.format('YYYY-MM');
+                if (!monthly[monthYear]) {
+                    monthly[monthYear] = {
+                        date: row.date.startOf('month'),
+                        revenue: 0,
+                        count: 0
+                    };
+                }
+                monthly[monthYear].revenue += row.revenue;
+                monthly[monthYear].count++;
+            });
+            
+            return Object.values(monthly).sort((a, b) => a.date - b.date);
+        }
+        
+        function prepareAgeGroupData(data) {
+            const ageGroups = {
+                '<18': { label: 'Under 18', revenue: 0 },
+                '18-30': { label: '18-30', revenue: 0 },
+                '30-45': { label: '30-45', revenue: 0 },
+                '45-60': { label: '45-60', revenue: 0 },
+                '60+': { label: '60+', revenue: 0 }
+            };
+            
+            data.forEach(row => {
+                if (row.age !== null) {
+                    let group;
+                    if (row.age < 18) group = '<18';
+                    else if (row.age <= 30) group = '18-30';
+                    else if (row.age <= 45) group = '30-45';
+                    else if (row.age <= 60) group = '45-60';
+                    else group = '60+';
+                    
+                    ageGroups[group].revenue += row.revenue;
+                }
+            });
+            
+            return Object.values(ageGroups).filter(group => group.revenue > 0);
+        }
+        
+        function prepareProductData(data) {
+            const products = {};
+            
+            data.forEach(row => {
+                if (!products[row.product]) {
+                    products[row.product] = {
+                        product: row.product,
+                        revenue: 0
+                    };
+                }
+                products[row.product].revenue += row.revenue;
+            });
+            
+            return Object.values(products).sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+        }
+        
+        function renderMonthlyRevenueChart(data) {
+            const trace = {
+                x: data.map(d => d.date.toDate()),
+                y: data.map(d => d.revenue),
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Revenue',
+                line: { color: '#4e73df' }
+            };
+            
+            const layout = {
+                margin: { t: 0 },
+                xaxis: { title: 'Month' },
+                yaxis: { title: 'Revenue ($)' }
+            };
+            
+            Plotly.newPlot('monthly-revenue-chart', [trace], layout);
+        }
+        
+        function renderAgeGroupChart(data) {
+            const trace = {
+                labels: data.map(d => d.label),
+                values: data.map(d => d.revenue),
+                type: 'pie',
+                marker: {
+                    colors: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b']
+                }
+            };
+            
+            const layout = {
+                margin: { t: 0, b: 0 }
+            };
+            
+            Plotly.newPlot('age-group-chart', [trace], layout);
+        }
+        
+        function renderProductCategoriesChart(data) {
+            const trace = {
+                x: data.map(d => d.product),
+                y: data.map(d => d.revenue),
+                type: 'bar',
+                marker: { color: '#4e73df' }
+            };
+            
+            const layout = {
+                margin: { t: 0 },
+                xaxis: { title: 'Product Category' },
+                yaxis: { title: 'Revenue ($)' }
+            };
+            
+            Plotly.newPlot('product-categories-chart', [trace], layout);
+        }
+        
+        function renderForecastChart(data) {
+            // Simple forecasting - just extend the trend
+            const lastDate = data[data.length - 1].date;
+            const lastRevenue = data[data.length - 1].revenue;
+            const avgGrowth = (data[data.length - 1].revenue - data[0].revenue) / data.length;
+            
+            const forecastData = [];
+            for (let i = 1; i <= 6; i++) {
+                forecastData.push({
+                    date: moment(lastDate).add(i, 'months'),
+                    revenue: lastRevenue + (avgGrowth * i)
+                });
+            }
+            
+            const historicalTrace = {
+                x: data.map(d => d.date.toDate()),
+                y: data.map(d => d.revenue),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Historical',
+                line: { color: '#4e73df' }
+            };
+            
+            const forecastTrace = {
+                x: forecastData.map(d => d.date.toDate()),
+                y: forecastData.map(d => d.revenue),
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Forecast',
+                line: { color: '#1cc88a', dash: 'dot' }
+            };
+            
+            const layout = {
+                margin: { t: 0 },
+                xaxis: { title: 'Month' },
+                yaxis: { title: 'Revenue ($)' }
+            };
+            
+            Plotly.newPlot('forecast-chart', [historicalTrace, forecastTrace], layout);
+        }
+        
+        function navigateTo(view) {
+            currentView = view;
+            
+            // Update active nav link
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === `#${view}`) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // Show/hide sections
+            document.getElementById('upload-section').style.display = 
+                view === 'upload' ? 'block' : 'none';
+            document.getElementById('dashboard-section').style.display = 
+                view === 'dashboard' ? 'block' : 'none';
+            
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+    </script>
+</body>
+</html>
